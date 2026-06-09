@@ -1,2 +1,22 @@
 flask>=3.0.0
-markitdown[pdf,docx,xlsx,pptx]>=0.1.0
+markitdown>=0.1.0
+# PPTX support
+python-pptx
+# DOCX support
+mammoth>=1.11.0
+lxml
+# XLSX/XLS support
+pandas
+openpyxl
+xlrd
+# PDF support
+pdfminer.six>=20251230
+pdfplumber>=0.11.9
+# Other
+beautifulsoup4
+requests
+markdownify
+charset-normalizer
+defusedxml
+magika~=0.6.1
+olefile

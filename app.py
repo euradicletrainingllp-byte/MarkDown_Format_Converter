@@ -39,9 +39,11 @@ def convert():
         result = md.convert(tmp_path, keep_data_uris=True)
         return jsonify({"markdown": result.text_content, "filename": file.filename})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
     finally:
-        os.unlink(tmp_path)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @app.route("/convert-url", methods=["POST"])
