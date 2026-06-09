@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MarkItDown – File to Markdown Converter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222535;
+      --border: #2e3248;
+      --accent: #6c63ff;
+      --accent-hover: #857dff;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header .logo span { color: var(--accent); }
+
+    header .badge {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      gap: 0;
+      overflow: hidden;
+      height: calc(100vh - 65px);
+    }
+
+    /* ── LEFT PANEL ── */
+    .left {
+      width: 420px;
+      min-width: 320px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    /* Drop zone */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--surface);
+      position: relative;
+    }
+
+    #drop-zone:hover, #drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.06);
+    }
+
+    #drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .drop-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .drop-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .drop-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Supported formats chips */
+    .formats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .fmt {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      color: var(--muted);
+    }
+
+    /* URL input */
+    .url-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .url-row input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .url-row input:focus { border-color: var(--accent); }
+    .url-row input::placeholder { color: var(--muted); }
+
+    /* Buttons */
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: var(--border); }
+
+    /* File info card */
+    #file-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #file-card.visible { display: flex; }
+
+    .file-icon { font-size: 26px; }
+
+    .file-meta { flex: 1; min-width: 0; }
+    .file-name {
+      font-size: 13px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-size { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    #convert-btn { width: 100%; }
+
+    /* Status */
+    #status {
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #status.info { background: rgba(108,99,255,0.12); color: var(--accent-hover); display: block; }
+    #status.success { background: rgba(34,197,94,0.12); color: var(--green); display: block; }
+    #status.error { background: rgba(239,68,68,0.12); color: var(--red); display: block; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RIGHT PANEL ── */
+    .right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .output-toolbar {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+
+    .output-toolbar .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .tab:hover:not(.active) { color: var(--text); }
+
+    .output-actions { display: flex; gap: 8px; }
+
+    .output-pane {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+      display: none;
+    }
+
+    .output-pane.active { display: block; }
+
+    /* Raw markdown */
+    #raw-output {
+      font-family: "Fira Code", "Cascadia Code", "Consolas", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Preview */
+    #preview-output {
+      max-width: 780px;
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    #preview-output h1,h2,h3,h4,h5,h6 { margin: 1.2em 0 0.5em; font-weight: 700; }
+    #preview-output h1 { font-size: 1.8em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+    #preview-output h2 { font-size: 1.4em; }
+    #preview-output h3 { font-size: 1.15em; }
+    #preview-output p { margin: 0.7em 0; }
+    #preview-output ul, #preview-output ol { margin: 0.7em 0 0.7em 1.5em; }
+    #preview-output li { margin: 0.3em 0; }
+    #preview-output code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: monospace;
+      font-size: 0.88em;
+    }
+    #preview-output pre {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    #preview-output pre code { background: none; border: none; padding: 0; }
+    #preview-output blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 1em;
+      color: var(--muted);
+      margin: 1em 0;
+    }
+    #preview-output table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+    }
+    #preview-output th, #preview-output td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    #preview-output th {
+      background: var(--surface2);
+      font-weight: 600;
+    }
+    #preview-output a { color: var(--accent); text-decoration: none; }
+    #preview-output a:hover { text-decoration: underline; }
+    #preview-output hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+    #preview-output img { max-width: 100%; border-radius: 8px; }
+
+    /* Empty state */
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 12px;
+      text-align: center;
+    }
+
+    .empty-state .icon { font-size: 56px; opacity: 0.3; }
+    .empty-state .title { font-size: 15px; font-weight: 600; }
+    .empty-state .sub { font-size: 13px; max-width: 280px; line-height: 1.6; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Mark<span>It</span>Down</div>
+  <div class="badge">File → Markdown</div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: Upload Controls -->
+  <div class="left">
+
+    <div>
+      <div class="section-label">Upload File</div>
+      <div id="drop-zone">
+        <input type="file" id="file-input" />
+        <div class="drop-icon">📄</div>
+        <div class="drop-title">Drop a file here</div>
+        <div class="drop-sub">or click to browse</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Supported Formats</div>
+      <div class="formats">
+        <span class="fmt">PDF</span>
+        <span class="fmt">DOCX</span>
+        <span class="fmt">PPTX</span>
+        <span class="fmt">XLSX / XLS</span>
+        <span class="fmt">HTML</span>
+        <span class="fmt">CSV</span>
+        <span class="fmt">JSON</span>
+        <span class="fmt">XML</span>
+        <span class="fmt">EPUB</span>
+        <span class="fmt">IPynb</span>
+        <span class="fmt">Images</span>
+        <span class="fmt">Audio</span>
+        <span class="fmt">MSG</span>
+        <span class="fmt">ZIP</span>
+        <span class="fmt">TXT</span>
+      </div>
+    </div>
+
+    <div id="file-card">
+      <div class="file-icon" id="file-icon">📄</div>
+      <div class="file-meta">
+        <div class="file-name" id="file-name">filename.pdf</div>
+        <div class="file-size" id="file-size">0 KB</div>
+      </div>
+      <button class="btn btn-ghost" onclick="clearFile()" title="Remove">✕</button>
+    </div>
+
+    <button class="btn btn-primary" id="convert-btn" disabled onclick="convertFile()">
+      Convert to Markdown
+    </button>
+
+    <div id="status"></div>
+
+    <div>
+      <div class="section-label">Or convert a URL</div>
+      <div class="url-row">
+        <input type="url" id="url-input" placeholder="https://example.com/article" />
+        <button class="btn btn-primary" onclick="convertUrl()">Go</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Output -->
+  <div class="right">
+
+    <div class="output-toolbar">
+      <div class="tabs">
+        <button class="tab active" id="tab-raw" onclick="switchTab('raw')">Raw Markdown</button>
+        <button class="tab" id="tab-preview" onclick="switchTab('preview')">Preview</button>
+      </div>
+      <div class="output-actions">
+        <button class="btn btn-ghost" onclick="copyMarkdown()">Copy</button>
+        <button class="btn btn-primary" onclick="downloadMarkdown()">Download .md</button>
+      </div>
+    </div>
+
+    <div class="output-pane active" id="pane-raw">
+      <div class="empty-state" id="empty-raw">
+        <div class="icon">✨</div>
+        <div class="title">Nothing converted yet</div>
+        <div class="sub">Upload a file or enter a URL on the left to see your Markdown output here.</div>
+      </div>
+      <pre id="raw-output" style="display:none"></pre>
+    </div>
+
+    <div class="output-pane" id="pane-preview">
+      <div class="empty-state" id="empty-preview">
+        <div class="icon">👁️</div>
+        <div class="title">No preview yet</div>
+        <div class="sub">Convert a file to see the rendered Markdown preview.</div>
+      </div>
+      <div id="preview-output" style="display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Marked.js for preview rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script>
+  let currentMarkdown = "";
+  let currentFilename = "output";
+
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("file-input");
+  const fileCard = document.getElementById("file-card");
+  const convertBtn = document.getElementById("convert-btn");
+  const statusEl = document.getElementById("status");
+
+  // Drag & drop
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  const EXT_ICONS = {
+    pdf: "📕", docx: "📘", doc: "📘", pptx: "📊", ppt: "📊",
+    xlsx: "📗", xls: "📗", csv: "📋", json: "🔧", html: "🌐",
+    htm: "🌐", epub: "📖", ipynb: "🔬", jpg: "🖼️", jpeg: "🖼️",
+    png: "🖼️", gif: "🖼️", mp3: "🎵", wav: "🎵", m4a: "🎵",
+    txt: "📄", xml: "📄", msg: "✉️", zip: "🗜️",
+  };
+
+  function setFile(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    document.getElementById("file-icon").textContent = EXT_ICONS[ext] || "📄";
+    document.getElementById("file-name").textContent = file.name;
+    document.getElementById("file-size").textContent = formatSize(file.size);
+    fileCard.classList.add("visible");
+    convertBtn.disabled = false;
+    convertBtn.dataset.file = ""; // will use fileInput.files[0]
+    setStatus("", "");
+  }
+
+  function clearFile() {
+    fileInput.value = "";
+    fileCard.classList.remove("visible");
+    convertBtn.disabled = true;
+    setStatus("", "");
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  async function convertFile() {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    setStatus('<span class="spinner"></span> Converting…', "info");
+    convertBtn.disabled = true;
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+      const res = await fetch("/convert", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      currentFilename = file.name.replace(/\.[^.]+$/, "");
+      displayOutput(data.markdown);
+      setStatus("✅ Converted successfully!", "success");
+    } catch (err) {
+      setStatus("❌ " + err.message, "error");
+    } finally {
+      convertBtn.disabled = false;
+    }
+  }
+
+  async function convertUrl() {
+    const url = document.getElementById("url-input").value.trim();
+    if (!url) return;
+
+    setStatus('<span class="spinner"></span> Fetching URL…', "info");
+
+    try {
+      const res = await fetch("/convert-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      currentFilename = "webpage";
+      displayOutput(data.markdown);
+      setStatus("✅ URL converted successfully!", "success");
+    } catch (err) {
+      setStatus("❌ " + err.message, "error");
+    }
+  }
+
+  function displayOutput(markdown) {
+    currentMarkdown = markdown;
+
+    // Raw
+    const rawEl = document.getElementById("raw-output");
+    rawEl.textContent = markdown;
+    rawEl.style.display = "block";
+    document.getElementById("empty-raw").style.display = "none";
+
+    // Preview
+    const previewEl = document.getElementById("preview-output");
+    previewEl.innerHTML = marked.parse(markdown);
+    previewEl.style.display = "block";
+    document.getElementById("empty-preview").style.display = "none";
+  }
+
+  function setStatus(msg, type) {
+    statusEl.className = type;
+    statusEl.innerHTML = msg;
+    statusEl.style.display = msg ? "block" : "none";
+  }
+
+  function switchTab(tab) {
+    document.getElementById("pane-raw").classList.toggle("active", tab === "raw");
+    document.getElementById("pane-preview").classList.toggle("active", tab === "preview");
+    document.getElementById("tab-raw").classList.toggle("active", tab === "raw");
+    document.getElementById("tab-preview").classList.toggle("active", tab === "preview");
+  }
+
+  function copyMarkdown() {
+    if (!currentMarkdown) return showToast("Nothing to copy yet");
+    navigator.clipboard.writeText(currentMarkdown).then(() => showToast("Copied to clipboard!"));
+  }
+
+  function downloadMarkdown() {
+    if (!currentMarkdown) return showToast("Nothing to download yet");
+    const blob = new Blob([currentMarkdown], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = currentFilename + ".md";
+    a.click();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  }
+</script>
+</body>
+</html>
