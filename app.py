@@ -9,7 +9,7 @@ app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
 )
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB limit
+app.config["MAX_CONTENT_LENGTH"] = None  # No file size limit
 
 md = MarkItDown()
 
@@ -25,19 +25,19 @@ def convert():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    if file.filename == "":
+    if not file.filename:
         return jsonify({"error": "No file selected"}), 400
 
-    # Save to a temp file (markitdown needs a path or stream)
     suffix = os.path.splitext(file.filename)[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         file.save(tmp.name)
         tmp_path = tmp.name
 
     try:
-        result = md.convert(tmp_path)
-        markdown = result.text_content
-        return jsonify({"markdown": markdown, "filename": file.filename})
+        # keep_data_uris=True tells markitdown to embed images as base64
+        # instead of writing placeholder filenames like Picture4.jpg
+        result = md.convert(tmp_path, keep_data_uris=True)
+        return jsonify({"markdown": result.text_content, "filename": file.filename})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -47,7 +47,7 @@ def convert():
 @app.route("/convert-url", methods=["POST"])
 def convert_url():
     data = request.get_json()
-    url = data.get("url", "").strip()
+    url = (data or {}).get("url", "").strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
     try:
