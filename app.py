@@ -1,13 +1,12 @@
 import os
 import tempfile
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from markitdown import MarkItDown
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(
     __name__,
-    static_folder=os.path.join(BASE_DIR, "static"),
     template_folder=os.path.join(BASE_DIR, "templates"),
 )
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB limit
@@ -17,7 +16,7 @@ md = MarkItDown()
 
 @app.route("/")
 def index():
-    return send_from_directory(os.path.join(BASE_DIR, "templates"), "index.html")
+    return render_template("index.html")
 
 
 @app.route("/convert", methods=["POST"])
