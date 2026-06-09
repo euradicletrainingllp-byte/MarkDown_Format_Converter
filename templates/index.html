@@ -508,6 +508,7 @@
 <script>
   let currentMarkdown = "";
   let currentFilename = "output";
+  let selectedFile = null;  // stores file from both drag-drop AND browse
 
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("file-input");
@@ -538,17 +539,18 @@
   };
 
   function setFile(file) {
+    selectedFile = file;  // always store the actual file object
     const ext = file.name.split(".").pop().toLowerCase();
     document.getElementById("file-icon").textContent = EXT_ICONS[ext] || "📄";
     document.getElementById("file-name").textContent = file.name;
     document.getElementById("file-size").textContent = formatSize(file.size);
     fileCard.classList.add("visible");
     convertBtn.disabled = false;
-    convertBtn.dataset.file = ""; // will use fileInput.files[0]
     setStatus("", "");
   }
 
   function clearFile() {
+    selectedFile = null;
     fileInput.value = "";
     fileCard.classList.remove("visible");
     convertBtn.disabled = true;
@@ -562,8 +564,8 @@
   }
 
   async function convertFile() {
-    const file = fileInput.files[0];
-    if (!file) return;
+    const file = selectedFile;
+    if (!file) { setStatus("❌ No file selected", "error"); return; }
 
     setStatus('<span class="spinner"></span> Converting…', "info");
     convertBtn.disabled = true;
